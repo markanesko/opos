@@ -18,15 +18,15 @@ namespace Assignment1
             LOW = 19,
         }
 
-        private readonly int _maxTasksAllowed;
+        private int _maxTasksAllowed;
 
         private readonly List<(Task task, Priority priority)> _queuedTasks = new List<(Task, Priority)>();
 
         private readonly Queue<Task> _executingTasks = new Queue<Task>();
 
-        public Scheduler()
+        public Scheduler(int maxTasksAllowed)
         {
-
+            _maxTasksAllowed = maxTasksAllowed;
         }
         
         public void PrintSomething()
@@ -41,20 +41,24 @@ namespace Assignment1
 
         protected override void QueueTask(Task task)
         {
+            Console.WriteLine("queue trasks");
             lock(_queuedTasks)
             {
+                _queuedTasks.Add((task, Priority.HIGH));
+
                 if (_executingTasks.Count < _maxTasksAllowed)
                 {
                     PushTaskToThreadPool();
                 }
             }
 
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
-
+        
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("execute inline");
+            return false;
         }
 
         protected override bool TryDequeue(Task task)
@@ -87,6 +91,7 @@ namespace Assignment1
                             Console.WriteLine("successfull");
                         }
                     }
+                    Console.WriteLine("trying to execute task");
                     base.TryExecuteTask(toRun);
                 }
                 catch (Exception e)
@@ -130,6 +135,11 @@ namespace Assignment1
             }
 
             QueueTask(task);
+        }
+
+        public int GetNumberOfTasks()
+        {
+            return _queuedTasks.Count + _executingTasks.Count;
         }
     }
 }
