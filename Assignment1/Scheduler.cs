@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Assignment1
@@ -17,9 +18,9 @@ namespace Assignment1
             LOW = 19,
         }
 
-        private readonly int _maxDegreeOfParallelism;
+        private readonly int _maxTasksAllowed;
 
-        private readonly List<(Task task, Priority priority)> _allTasks = new List<(Task, Priority)>();
+        private readonly List<(Task task, Priority priority)> _queuedTasks = new List<(Task, Priority)>();
 
         private readonly Queue<Task> _executingTasks = new Queue<Task>();
 
@@ -40,7 +41,13 @@ namespace Assignment1
 
         protected override void QueueTask(Task task)
         {
-            
+            lock(_queuedTasks)
+            {
+                if (_executingTasks.Count < _maxTasksAllowed)
+                {
+                    // Select task with highest priority and push it to thread pool
+                }
+            }
 
             throw new NotImplementedException();
         }
@@ -52,18 +59,57 @@ namespace Assignment1
 
         protected override bool TryDequeue(Task task)
         {
-            lock (_allTasks) return _allTasks.Remove(findTask(task));
+            lock (_queuedTasks) return _queuedTasks.Remove(FindTask(task));
         }
 
-        private (Task, Priority) findTask(Task task)
+        private (Task, Priority) FindTask(Task task)
         {
-            return _allTasks.Find((x) => x.task.GetHashCode() == task.GetHashCode());
+            return _queuedTasks.Find((x) => x.task.GetHashCode() == task.GetHashCode());
+        }
+
+        private void PushTaskToThreadPool()
+        {
+            ThreadPool.UnsafeQueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    Task toRun;
+                    lock (_queuedTasks)
+                    {
+                        if(_queuedTasks.Count == 0)
+                        {
+                            return;
+                        }
+
+                        toRun = GetHighestPriorityTask();
+                        if (TryDequeue(toRun))
+                        {
+                            Console.WriteLine("successfull");
+                        }
+                    }
+                    base.TryExecuteTask(toRun);
+                }
+                catch (Exception e)
+                {   
+                    // TODO: Deal with exceptions
+                    Console.WriteLine(e);
+                }
+
+            }, null);
+
+        }
+
+        private Task GetHighestPriorityTask()
+        {
+            throw new NotImplementedException();
         }
 
         public void ScheduleTask(Task task, Priority priority, UInt32 maxDurationTime)
         {
-
-            _allTasks.Add((task, priority));
+            lock (_queuedTasks)
+            {
+                _queuedTasks.Add((task, priority));
+            }
 
             QueueTask(task);
         }
