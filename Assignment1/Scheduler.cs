@@ -45,7 +45,7 @@ namespace Assignment1
             {
                 if (_executingTasks.Count < _maxTasksAllowed)
                 {
-                    // Select task with highest priority and push it to thread pool
+                    PushTaskToThreadPool();
                 }
             }
 
@@ -101,7 +101,25 @@ namespace Assignment1
 
         private Task GetHighestPriorityTask()
         {
-            throw new NotImplementedException();
+            lock (_queuedTasks)
+            {
+                if (_queuedTasks.FindAll((x) => x.priority == Priority.HIGH).Count != 0)
+                {
+                    return _queuedTasks.FindAll((x) => x.priority == Priority.HIGH).First().task;
+                }
+                else if (_queuedTasks.FindAll((x) => x.priority == Priority.NORMAL).Count != 0)
+                {
+                    return _queuedTasks.FindAll((x) => x.priority == Priority.NORMAL).First().task;
+                }
+                else if (_queuedTasks.FindAll((x) => x.priority == Priority.LOW).Count != 0)
+                {
+                    return _queuedTasks.FindAll((x) => x.priority == Priority.LOW).First().task;
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
 
         public void ScheduleTask(Task task, Priority priority, UInt32 maxDurationTime)
