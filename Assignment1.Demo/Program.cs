@@ -26,7 +26,7 @@ namespace Assignment1.Demo
             //Console.WriteLine("done? windonz");
 
 
-            Scheduler lcts = new Scheduler(2);
+            SchedulerThreadPool lcts = new SchedulerThreadPool(2);
             List<Task> tasks = new List<Task>();
 
             // Create a TaskFactory and pass it our custom scheduler.

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Assignment1
 {
-    public class Scheduler : System.Threading.Tasks.TaskScheduler
+    public class SchedulerThreadPool : System.Threading.Tasks.TaskScheduler
     {
         UInt32 counter;
 
@@ -24,7 +24,7 @@ namespace Assignment1
 
         private readonly Queue<Task> _executingTasks = new Queue<Task>();
 
-        public Scheduler(int maxTasksAllowed)
+        public SchedulerThreadPool(int maxTasksAllowed)
         {
             _maxTasksAllowed = maxTasksAllowed;
         }
