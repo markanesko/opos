@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Assignment1
@@ -17,9 +18,11 @@ namespace Assignment1
 
         private int _maxTasksAllowed;
 
-        private readonly List<(Task task, Priority priority)> _queuedTasks = new List<(Task, Priority)>();
+        private readonly List<(Task task, Priority priority, CancellationTokenSource cT)> _queuedTasks = new List<(Task, Priority, CancellationTokenSource)>();
 
         private readonly List<Task> _executingTasks = new List<Task>();
+
+        
 
         public Scheduler(int maxTasksAllowed)
         {
@@ -40,7 +43,7 @@ namespace Assignment1
         {
             lock (_queuedTasks)
             {
-
+                AbortAllThatRequireCancelation();
                 if (_executingTasks.Count < _maxTasksAllowed)
                 {
                     Task toRun = GetHighestPriorityTask();
@@ -51,7 +54,6 @@ namespace Assignment1
                     }
                 }
             }
-
         }
 
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
@@ -61,11 +63,10 @@ namespace Assignment1
 
         protected override bool TryDequeue(Task task)
         {
-            
             lock (_queuedTasks) return _queuedTasks.Remove(FindTask(task));
         }
 
-        private (Task, Priority) FindTask(Task task)
+        private (Task, Priority, CancellationTokenSource) FindTask(Task task)
         {
             return _queuedTasks.Find((x) => x.task.GetHashCode() == task.GetHashCode());
         }
@@ -92,11 +93,10 @@ namespace Assignment1
         }
         private void PushTaskToThreadPool(Task task)
         {
-            Console.WriteLine("started executing task: " + task.Id);
-            PrintTaskPriority(task);
             task.Start();
             task.ContinueWith(_ => {
                 lock (_executingTasks) _executingTasks.Remove(task);
+                // signal task scheduler to run new tasks
                 QueueTask(task);
             });
         }
@@ -129,14 +129,12 @@ namespace Assignment1
             }
         }
 
-        public void ScheduleTask(Task task, Priority priority, UInt32 maxDurationTime)
+        public void ScheduleTask(Task task, Priority priority, CancellationTokenSource cts  )
         {
-            Console.Write("prior in schedule task: ");
-            PrettyPrintPriority(priority);
 
             lock (_queuedTasks)
             {
-                _queuedTasks.Add((task, priority));
+                _queuedTasks.Add((task, priority, cts));
             }
 
             QueueTask(task);
@@ -145,6 +143,34 @@ namespace Assignment1
         public int GetNumberOfTasks()
         {
             return _queuedTasks.Count + _executingTasks.Count;
+        }
+
+        public void AbortAllThatRequireCancelation()
+        {
+            lock (_queuedTasks)
+            {
+                _queuedTasks.FindAll((x) => x.cT.IsCancellationRequested == true).ForEach((x) => 
+                {
+                    AbortSingleTask(x);
+                });
+            }
+        }
+
+
+        private void AbortSingleTask((Task, Priority, CancellationTokenSource) toPrevent)
+        {
+            toPrevent.Item3.Cancel();
+            TryDequeue(toPrevent.Item1);
+            DelteFromExecutingCallback(toPrevent.Item1);
+        }
+
+        public void AbortTask(Task task)
+        {
+            lock (_queuedTasks)
+            {
+                (Task, Priority, CancellationTokenSource) toPrevent = FindTask(task);
+                AbortSingleTask(toPrevent);
+            }
         }
     }
 }
