@@ -17,85 +17,96 @@ namespace Assignment1.Demo
             Task ta = new Task(() => { Task.Delay(1000).Wait(); Console.WriteLine("omg windonzzz"); });
             Task tb = new Task(() => { Task.Delay(5000).Wait(); Console.WriteLine("omg wsindonzzz"); });
             Task tc = new Task(() => { Task.Delay(1000).Wait(); Console.WriteLine("omg wiaandonzzz"); });
+                    
+            CancellationTokenSource cts1 = new CancellationTokenSource(1);
+            CancellationTokenSource cts2 = new CancellationTokenSource(1);
+            CancellationTokenSource cts3 = new CancellationTokenSource(1);
+            
+            a.ScheduleTask(ta, Scheduler.Priority.HIGH, cts1);
+            a.ScheduleTask(tb, Scheduler.Priority.HIGH, cts2);
+            a.ScheduleTask(tc, Scheduler.Priority.HIGH, cts3);
 
 
-            a.ScheduleTask(ta, Scheduler.Priority.HIGH, 1);
-            a.ScheduleTask(tb, Scheduler.Priority.HIGH, 1);
-            a.ScheduleTask(tc, Scheduler.Priority.HIGH, 1);
+            a.AbortAllThatRequireCancelation();
 
             while (a.GetNumberOfTasks() > 0)
             {
                 Task.Delay(1000).Wait();
             }
 
-            
+
 
             Scheduler b = new Scheduler(4);
 
             for (int i = 0; i < 15; i++)
             {
-                Task t = new Task(() =>
+                int value = i;
+
+                CancellationTokenSource cancelTokenSource = new CancellationTokenSource(5000);
+
+                Task toStart = new Task(() =>
+                    {
+                        Task.Delay(value * 1000).Wait();
+                        Console.WriteLine("baka windonz " + value.ToString());
+                    }
+                );
+
+                Scheduler.Priority prior;
+
+                if (value % 5 == 0)
                 {
-                    Task.Delay(i * 100).Wait(); Console.WriteLine("omg windonzzz: " + i);
-                });
-                if (i % 2 == 0) 
+                    prior = Scheduler.Priority.NORMAL;
+                }
+
+                if (value % 7 == 0)
                 {
-                    Console.WriteLine("added high");
-                    b.ScheduleTask(t, Scheduler.Priority.HIGH, 1);
-                } 
-                else if (i % 3 == 0)
-                {
-                    Console.WriteLine("added normal");
-                    b.ScheduleTask(t, Scheduler.Priority.NORMAL, 1);
+                    prior = Scheduler.Priority.LOW;
                 }
                 else
                 {
-                    Console.WriteLine("added low");
-                    b.ScheduleTask(t, Scheduler.Priority.LOW, 1);
+                    prior = Scheduler.Priority.HIGH;
                 }
-                
+
+
+                b.ScheduleTask(toStart, prior, cancelTokenSource);
+
             }
+
+            CancellationTokenSource canc = new CancellationTokenSource(500);
+
+            Task t1 = new Task(() =>
+            {
+                //Task.Delay(10000).Wait(); Console.WriteLine("baka windonzHIGH");
+                for (int i = 0; i < 10; i++)
+                {
+                    if (canc.Token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Task.Delay(1000).Wait();
+                        Console.WriteLine("still not done windonzs");
+                    }
+                }
+
+            }, canc.Token
+            );
+
+            b.ScheduleTask(t1, Scheduler.Priority.NORMAL, canc);
+
+            Task.Delay(1000).Wait();
+
+            b.AbortTask(t1);
+
+            b.AbortAllThatRequireCancelation();
+
 
             while (b.GetNumberOfTasks() > 0)
             {
                 Task.Delay(1000).Wait();
             }
             Console.WriteLine("done? windonz");
-
-
-            //SchedulerThreadPool lcts = new SchedulerThreadPool(2);
-            //List<Task> tasks = new List<Task>();
-
-            //// Create a TaskFactory and pass it our custom scheduler.
-            //TaskFactory factory = new TaskFactory(lcts);
-            //CancellationTokenSource cts = new CancellationTokenSource();
-
-            //// Use our factory to run a set of tasks.
-            //Object lockObj = new Object();
-            //int outputItem = 0;
-
-            //for (int tCtr = 0; tCtr <= 4; tCtr++)
-            //{
-            //    int iteration = tCtr;
-            //    Task t = factory.StartNew(() => {
-            //        for (int i = 0; i < 1000; i++)
-            //        {
-            //            lock (lockObj)
-            //            {
-            //                Console.Write("{0} in task t-{1} on thread {2}   ",
-            //                              i, iteration, Thread.CurrentThread.ManagedThreadId);
-            //                outputItem++;
-            //                if (outputItem % 3 == 0)
-            //                    Console.WriteLine();
-            //            }
-            //        }
-            //    }, cts.Token);
-            //    tasks.Add(t);
-            //}
-
-            //Task.WaitAll(tasks.ToArray());
-            //cts.Dispose();
-            //Console.WriteLine("\n\nSuccessful completion.");
 
         }                     
     }
